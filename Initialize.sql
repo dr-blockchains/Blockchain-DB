@@ -47,9 +47,6 @@ BEGIN
             --     WHERE p.tx_id = Transactions.tx_id -- Match each transaction to its parties
             --         AND dbo.confirmed_balance(p.public_key) + p.utxo < 0);  -- Exclude if results in a negative balance for anyone
 
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (6, 'Len:all_tx_hashes ', LEN(@all_tx_hashes)); 
-
     SELECT @block_reward = CONVERT(BIGINT,VariableValue)
     FROM Parameters WHERE VariableName = 'block_reward';
 
@@ -60,18 +57,9 @@ BEGIN
                 CONCAT(CAST(@miner AS CHAR(32)) + 
                             CAST(@coinbase_reward AS CHAR(20)) + 
                             '0'));
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (6, 'tx_hash', @tx_hash); 
 
     -- Simplified Merkel Tree: Concatenate all closed transaction hashes for the block.
     SET @merkle_root = HASHBYTES('SHA2_256', CONCAT(@all_tx_hashes, @tx_hash)); 
-
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (6, 'concat', CONCAT(@all_tx_hashes, CAST(@tx_hash AS CHAR(64)))); 
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (6, 'Len:concat', LEN(CONCAT(@all_tx_hashes, CAST(@tx_hash AS CHAR(64))))); 
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (6, 'merkle_root', @merkle_root); 
 
     SELECT @previous_hash = previous_hash 
     FROM Blocks
@@ -103,11 +91,6 @@ BEGIN
         ));
 
     END;                                  
-
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (6, 'Valid nonce', @nonce);
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (6, 'Valid block_hash', @block_hash);    
 
     EXEC close_block 
         @time_stamp = @time_stamp, 
