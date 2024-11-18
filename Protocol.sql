@@ -180,9 +180,6 @@ BEGIN
         FROM Parties 
         WHERE tx_id = @tx_id));
 
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-            VALUES (4, 'tx_hash', @tx_hash);
-
     -- Update the transaction record with the calculated hash and tx_fee
     UPDATE Transactions
     SET tx_hash = @tx_hash, 
@@ -253,9 +250,6 @@ BEGIN
     FROM Transactions
     WHERE block_id = @block_id; 
 
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (2, 'Len:all_tx_hashes ', LEN(@all_tx_hashes)); 
-
     SELECT @block_fees = -COALESCE(SUM(p.utxo), 0) 
     FROM Transactions t INNER JOIN Parties p 
          ON p.tx_id = t.tx_id
@@ -277,9 +271,6 @@ BEGIN
                             CAST(@coinbase_reward AS CHAR(20)) + 
                             '0'));
 
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (2, 'tx_hash', @tx_hash);
-
     -- Close the coinbase transaction with the calculated hash. Cannot use the close_transaction procedure. 
     UPDATE Transactions
     SET tx_hash = @tx_hash,
@@ -288,13 +279,6 @@ BEGIN
 
     -- Simplified Merkel Tree: Concatenate all closed transaction hashes for the block.
     SET @merkle_root = HASHBYTES('SHA2_256', CONCAT(@all_tx_hashes, @tx_hash)); 
-
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (2, 'concat', CONCAT(@all_tx_hashes, CAST(@tx_hash AS CHAR(64)))); 
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (2, 'Len:concat', LEN(CONCAT(@all_tx_hashes, CAST(@tx_hash AS CHAR(64))))); 
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (2, 'merkle_root', @merkle_root); 
 
     SELECT @version = CONVERT(INT,VariableValue)
     FROM Parameters WHERE VariableName = 'version';
@@ -316,15 +300,10 @@ BEGIN
             )
         ));
 
-    INSERT INTO Parameters (Run, VariableName, VariableValue) 
-        VALUES (2, 'block_hash', @block_hash); 
-
     -- Check if @block_hash meets the difficulty criterion. 
     IF @block_hash > @target
     BEGIN 
-        SELECT * FROM Parameters; 
-        COMMIT;
-        -- ROLLBACK TRANSACTION; 
+        ROLLBACK TRANSACTION; 
         THROW 51000, 'Wrong nonce! Hash does not meet the difficulty target.', 1;
     END 
 
